@@ -59,10 +59,9 @@ module.exports = class extends Generator {
         name: 'Vesting',
         value: 'includeVesting',
         checked: true
-      }]
+      }],
+      when: answers => answers.token_type == 'zeppelin'
     }];
-
-
 
     return this.prompt(prompts).then(answers => {
       const token_features = answers.token_features;
@@ -101,20 +100,36 @@ module.exports = class extends Generator {
   }
 
   _writingTokenContractfile() {
-    this.fs.copyTpl(
-      this.templatePath('token.sol'),
-      this.destinationPath('contracts/token.sol'),
-      {
-        _name: "TestToken",
-        _symbol: "TT",
-        _decimals: 18,
-        token_type: this.token_type,
-        includeBurnable: this.includeBurnable,
-        includePausable: this.includePausable,
-        includeMintable: this.includeMintable,
-        includeVesting: this.includeVesting
-      }
-    )
+    if (this.token_type == 'zeppelin') {
+      this.fs.copyTpl(
+        this.templatePath('zeppelin_token.sol'),
+        this.destinationPath('contracts/token.sol'),
+        {
+          _name: "TestToken",
+          _symbol: "TT",
+          _decimals: 18,
+          includeBurnable: this.includeBurnable,
+          includePausable: this.includePausable,
+          includeMintable: this.includeMintable,
+          includeVesting: this.includeVesting
+        }
+      )
+    }
+    if (this.token_type == 'minime') {
+      this.fs.copyTpl(
+        this.templatePath('minime_token.sol'),
+        this.destinationPath('contracts/token.sol'),
+        {
+          _name: "TestToken",
+          _symbol: "TT",
+          _decimals: 18,
+          includeBurnable: this.includeBurnable,
+          includePausable: this.includePausable,
+          includeMintable: this.includeMintable,
+          includeVesting: this.includeVesting
+        }
+      )
+    }
   }
 
   _writingGulpfile() {
