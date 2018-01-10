@@ -21,6 +21,7 @@ module.exports = class extends Generator {
   //   );
   // }
 
+  //TODO: account address check
   prompting() {
     if (!this.options['skip-welcome-message']) {
       this.log(yosay('\'Allo \'allo! Check this one first !! https://docs.google.com/spreadsheets/d/1Pg0I9QnB0AheoiBgheaFfqHpfI3Cr6Pf6-80yipl16Y/edit?usp=sharing.'));
@@ -263,6 +264,15 @@ module.exports = class extends Generator {
       name: 'kycIncluded',
       value: true,
       message: "Is KYC process needed for crowdsale?"
+    }, {
+      type: 'input',
+      name: 'owner',
+      message: "Give us the owner account address for contracts.",
+      validate: (input) => {
+        if(input == '')
+          return "You should provide owner account"
+        return true;
+      }
     }
   ];
 
