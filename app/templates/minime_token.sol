@@ -1,8 +1,8 @@
 pragma solidity ^0.4.18;
 
-import './minime/MiniMeToken.sol';
+<%import_contracts()%>
 
-contract <%= _symbol %>Token <%token_inherit()%> {
+contract <%= _symbol %>Token <%inherit()%> {
 
   function <%= _symbol %>Token (address _tokenFactory)
     MiniMeToken(
@@ -15,3 +15,12 @@ contract <%= _symbol %>Token <%token_inherit()%> {
       false
     ){}
 }
+
+<% function inherit() {%>is MiniMeToken
+<%}%>
+
+
+
+<% function import_contracts() {%>
+import './minime/MiniMeToken.sol';
+<%}%>

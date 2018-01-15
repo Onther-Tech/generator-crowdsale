@@ -8,18 +8,12 @@ const mkdirp = require('mkdirp');
 const _s = require('underscore.string');
 const ncp = require('ncp').ncp;
 
+//TODO: package.json
+
 module.exports = class extends Generator {
   constructor(args, opts) {
     super(args, opts);
   }
-
-  // initializing() {
-  //   this.pkg = require('../package.json');
-  //   this.composeWith(
-  //     require.resolve(`generator-${this.options['test-framework']}/generators/app`),
-  //     { 'skip-install': this.options['skip-install'] }
-  //   );
-  // }
 
   //TODO: account address check
   prompting() {
@@ -27,13 +21,11 @@ module.exports = class extends Generator {
       this.log(yosay('\'Allo \'allo! Check this one first !! https://docs.google.com/spreadsheets/d/1Pg0I9QnB0AheoiBgheaFfqHpfI3Cr6Pf6-80yipl16Y/edit?usp=sharing.'));
     }
 
-    const prompts = [
-    {
+    const prompts = [{
       type: 'list',
       name: 'token_type',
       message: 'Which version of Token would you like to use?',
-      choices: [
-      {
+      choices: [{
         name: 'zeppelin',
         value: 'zeppelin'
       }, {
@@ -63,7 +55,7 @@ module.exports = class extends Generator {
       name: 'token_name',
       message: 'What is your token name?',
       validate: (input) => {
-        if(input == '')
+        if (input == '')
           return "You should provide token name"
         return true;
       }
@@ -72,7 +64,7 @@ module.exports = class extends Generator {
       name: 'token_symbol',
       message: 'What is your token symbol?',
       validate: (input) => {
-        if(input == '')
+        if (input == '')
           return "You should provide token symbol"
         return true;
       }
@@ -132,7 +124,7 @@ module.exports = class extends Generator {
         var reg = /^\d+$/;
         if (!reg.test(input))
           return "Start time should be a number!";
-        else if (input < Date.now()/1000)
+        else if (input < Date.now() / 1000)
           return "Start time unix timestamp should be bigger than unix timestamp for now"
         else
           return true
@@ -189,13 +181,13 @@ module.exports = class extends Generator {
         for (var i = 0; i < input.length; i++) {
           if (input[i].length != 2 || typeof input[i][0] != 'number' || typeof input[i][1] != 'number')
             return "invalid array"
-          if(i != input.length -1 && input[i][0] >= input[i+1][0])
+          if (i != input.length - 1 && input[i][0] >= input[i + 1][0])
             return "previous period startTime should be less than the next period startTime"
         }
 
-        if(input[0][0] != answers.startTime)
+        if (input[0][0] != answers.startTime)
           return "first period startTime should be equal to crowdsale startTime";
-        if(input[input.length - 1][0] >= answers.endTime)
+        if (input[input.length - 1][0] >= answers.endTime)
           return "final period startTime should be less than crowdsale endTime";
 
         return true;
@@ -212,15 +204,15 @@ module.exports = class extends Generator {
         if (input == '')
           return "You should provide token rate"
         var sum = 0;
-        if(input[0][0] != "crowdsale")
+        if (input[0][0] != "crowdsale")
           return "First element must be 'crowdsale'"
-        for(var i = 0; i < input.length; i++) {
+        for (var i = 0; i < input.length; i++) {
           if (input[i].length != 3 || typeof input[i][0] != 'string' || typeof input[i][1] != 'string' || typeof input[i][2] != 'number')
             return "invalid array"
           sum += input[i][2];
         }
 
-        if(sum != 100)
+        if (sum != 100)
           return "sum of distribution rate should be 100"
 
         return true;
@@ -250,12 +242,12 @@ module.exports = class extends Generator {
       },
       validate: (input) => {
         var sum = 0;
-        for(var i = 0; i < input.length; i++) {
-          if(input[i].length != 2 || typeof input[i][0] != 'string' || typeof input[i][1] != 'number')
+        for (var i = 0; i < input.length; i++) {
+          if (input[i].length != 2 || typeof input[i][0] != 'string' || typeof input[i][1] != 'number')
             return "invalid array"
           sum += input[i][1];
         }
-        if(sum != 100)
+        if (sum != 100)
           return "Sum of ratio must be 100"
         return true;
       }
@@ -269,12 +261,11 @@ module.exports = class extends Generator {
       name: 'owner',
       message: "Give us the owner account address for contracts.",
       validate: (input) => {
-        if(input == '')
+        if (input == '')
           return "You should provide owner account"
         return true;
       }
-    }
-  ];
+    }];
 
     return this.prompt(prompts).then(answers => {
       const token_features = answers.token_features;
@@ -297,29 +288,42 @@ module.exports = class extends Generator {
       this.rateVariability = answers.rateVariability;
       this.tokenRate = answers.tokenRate;
       this.tokenDistribution = answers.tokenDistribution;
-      this.maxBuyerFundedIncluded = answers.maxBuyerFunded;
+      this.maxBuyerFundedIncluded = answers.maxBuyerFundedIncluded;
       this.maxBuyerFunded = answers.maxBuyerFunded;
       this.etherDistribution = answers.etherDistribution;
       this.kycIncluded = answers.kycIncluded;
+      this.contributorsRatio = this.tokenDistribution[0][2];
 
+      if (this.tokenDistribution.length == 1)
+        this.tokenDistributionIncluded = false;
+      else
+        this.tokenDistributionIncluded = true;
+
+      if (this.rateVariability) {
+        var tokenRates = [];
+        var tokenRateTimelines = [];
+        for (var i = 0; i < this.tokenRate.length; i++) {
+          tokenRateTimelines.push(this.tokenRate[0]);
+          tokenRates.push(this.tokenRate[1]);
+        }
+        this.tokenRates = tokenRates;
+        this.tokenRateTimelines = tokenRateTimelines;
+      }
     });
   }
 
   writing() {
-    mkdirp('contracts');
+    this._writingFolders();
     this._writingBaseContractfile();
     this._writingTokenContractfile();
-    // this._writingGulpfile();
-    // this._writingPackageJSON();
-    // this._writingBabel();
-    // this._writingGit();
-    // this._writingBower();
-    // this._writingEditorConfig();
-    // this._writingH5bp();
-    // this._writingStyles();
-    // this._writingScripts();
-    // this._writingHtml();
-    // this._writingMisc();
+    this._writingCrowdsaleContractfile();
+    // this._writingMigrationfile();
+    this._writingConfigfile();
+  }
+
+  _writingFolders() {
+    mkdirp('contracts');
+    mkdirp('migrations');
   }
 
   _writingBaseContractfile() {
@@ -329,10 +333,15 @@ module.exports = class extends Generator {
 
   _writingTokenContractfile() {
     if (this.token_type == 'zeppelin') {
+
+      this.fs.copy(
+        this.templatePath('ClaimableToken.sol'),
+        this.destinationPath('contracts/ClaimableToken.sol')
+      )
+
       this.fs.copyTpl(
-        this.templatePath('zeppelin_token.sol'),
-        this.destinationPath('contracts/token.sol'),
-        {
+        this.templatePath('Zeppelin_token.sol'),
+        this.destinationPath('contracts/Token.sol'), {
           _name: this.token_name,
           _symbol: this.token_symbol,
           _decimals: this.token_decimal,
@@ -344,9 +353,8 @@ module.exports = class extends Generator {
     }
     if (this.token_type == 'minime') {
       this.fs.copyTpl(
-        this.templatePath('minime_token.sol'),
-        this.destinationPath('contracts/token.sol'),
-        {
+        this.templatePath('Minime_token.sol'),
+        this.destinationPath('contracts/Token.sol'), {
           _name: this.token_name,
           _symbol: this.token_symbol,
           _decimals: this.token_decimal
@@ -355,271 +363,66 @@ module.exports = class extends Generator {
     }
   }
   _writingCrowdsaleContractfile() {
-
-  }
-
-  _writingGulpfile() {
-    this.fs.copyTpl(
-      this.templatePath('gulpfile.js'),
-      this.destinationPath('gulpfile.js'),
-      {
-        date: (new Date).toISOString().split('T')[0],
-        name: this.pkg.name,
-        version: this.pkg.version,
-        includeSass: this.includeSass,
-        includeBootstrap: this.includeBootstrap,
-        legacyBootstrap: this.legacyBootstrap,
-        includeBabel: this.options['babel'],
-        testFramework: this.options['test-framework']
-      }
-    );
-  }
-
-  _writingPackageJSON() {
-    this.fs.copyTpl(
-      this.templatePath('_package.json'),
-      this.destinationPath('package.json'),
-      {
-        includeSass: this.includeSass,
-        includeBabel: this.options['babel'],
-        includeJQuery: this.includeJQuery,
-      }
-    );
-  }
-
-  _writingBabel() {
-    this.fs.copy(
-      this.templatePath('babelrc'),
-      this.destinationPath('.babelrc')
-    );
-  }
-
-  _writingGit() {
-    this.fs.copy(
-      this.templatePath('gitignore'),
-      this.destinationPath('.gitignore'));
-
-    this.fs.copy(
-      this.templatePath('gitattributes'),
-      this.destinationPath('.gitattributes'));
-  }
-
-  _writingBower() {
-    const bowerJson = {
-      name: _s.slugify(this.appname),
-      private: true,
-      dependencies: {}
-    };
-
-    if (this.includeBootstrap) {
-
-      // Bootstrap 4
-      bowerJson.dependencies = {
-        'bootstrap': '~4.0.0-alpha.6'
-      };
-
-      // Bootstrap 3
-      if (this.legacyBootstrap) {
-        if (this.includeSass) {
-          bowerJson.dependencies = {
-            'bootstrap-sass': '~3.3.5'
-          };
-          bowerJson.overrides = {
-            'bootstrap-sass': {
-              'main': [
-                'assets/stylesheets/_bootstrap.scss',
-                'assets/fonts/bootstrap/*',
-                'assets/javascripts/bootstrap.js'
-              ]
-            }
-          };
-        } else {
-          bowerJson.dependencies = {
-            'bootstrap': '~3.3.5'
-          };
-          bowerJson.overrides = {
-            'bootstrap': {
-              'main': [
-                'less/bootstrap.less',
-                'dist/css/bootstrap.css',
-                'dist/js/bootstrap.js',
-                'dist/fonts/*'
-              ]
-            }
-          };
+    if (this.rateVariability) {
+      this.fs.copyTpl(
+        this.templatePath('Rate.sol'),
+        this.destinationPath('contracts/Rate.sol'), {
+          _rateVariablility: this.rateVariability,
+          _tokenRates: this.tokenRates,
+          _tokenRateTimelines: this.tokenRateTimelines
         }
-      }
-
-    } else if (this.includeJQuery) {
-      bowerJson.dependencies['jquery'] = '~2.1.1';
-    }
-
-    if (this.includeModernizr) {
-      bowerJson.dependencies['modernizr'] = '~2.8.1';
-    }
-
-    this.fs.writeJSON('bower.json', bowerJson);
-    this.fs.copy(
-      this.templatePath('bowerrc'),
-      this.destinationPath('.bowerrc')
-    );
-  }
-
-  _writingEditorConfig() {
-    this.fs.copy(
-      this.templatePath('editorconfig'),
-      this.destinationPath('.editorconfig')
-    );
-  }
-
-  _writingH5bp() {
-    this.fs.copy(
-      this.templatePath('favicon.ico'),
-      this.destinationPath('app/favicon.ico')
-    );
-
-    this.fs.copy(
-      this.templatePath('apple-touch-icon.png'),
-      this.destinationPath('app/apple-touch-icon.png')
-    );
-
-    this.fs.copy(
-      this.templatePath('robots.txt'),
-      this.destinationPath('app/robots.txt'));
-  }
-
-  _writingStyles() {
-    let css = 'main';
-
-    if (this.includeSass) {
-      css += '.scss';
+      )
     } else {
-      css += '.css';
-    }
-
-    this.fs.copyTpl(
-      this.templatePath(css),
-      this.destinationPath('app/styles/' + css),
-      {
-        includeBootstrap: this.includeBootstrap,
-        legacyBootstrap: this.legacyBootstrap
-      }
-    );
-  }
-
-  _writingScripts() {
-    this.fs.copy(
-      this.templatePath('main.js'),
-      this.destinationPath('app/scripts/main.js')
-    );
-  }
-
-  _writingHtml() {
-    let bsPath, bsPlugins;
-
-    // path prefix for Bootstrap JS files
-    if (this.includeBootstrap) {
-
-      // Bootstrap 4
-      bsPath = '/bower_components/bootstrap/js/dist/';
-      bsPlugins = [
-        'util',
-        'alert',
-        'button',
-        'carousel',
-        'collapse',
-        'dropdown',
-        'modal',
-        'scrollspy',
-        'tab',
-        'tooltip',
-        'popover'
-      ];
-
-      // Bootstrap 3
-      if (this.legacyBootstrap) {
-        if (this.includeSass) {
-          bsPath = '/bower_components/bootstrap-sass/assets/javascripts/bootstrap/';
-        } else {
-          bsPath = '/bower_components/bootstrap/js/';
+      this.fs.copyTpl(
+        this.templatePath('Rate.sol'),
+        this.destinationPath('contracts/Rate.sol'), {
+          _rateVariablility: this.rateVariability,
+          _tokenRate: this.tokenRate,
         }
-        bsPlugins = [
-          'affix',
-          'alert',
-          'dropdown',
-          'tooltip',
-          'modal',
-          'transition',
-          'button',
-          'popover',
-          'carousel',
-          'scrollspy',
-          'collapse',
-          'tab'
-        ];
-      }
+      )
     }
 
     this.fs.copyTpl(
-      this.templatePath('index.html'),
-      this.destinationPath('app/index.html'),
-      {
-        appname: this.appname,
-        includeSass: this.includeSass,
-        includeBootstrap: this.includeBootstrap,
-        legacyBootstrap: this.legacyBootstrap,
-        includeModernizr: this.includeModernizr,
-        includeJQuery: this.includeJQuery,
-        bsPath: bsPath,
-        bsPlugins: bsPlugins
+      this.templatePath('Crowdsale.sol'),
+      this.destinationPath('contracts/Crowdsale.sol'), {
+        _symbol: this.token_symbol,
+        _rateVariablility: this.rateVariability,
+        _maxBuyerFundedIncluded: this.maxBuyerFundedIncluded,
+        _maxBuyerFunded: this.maxBuyerFunded,
+        _tokenDistributionIncluded: this.tokenDistributionIncluded,
+        _kycIncluded: this.kycIncluded,
+        _tokenType: this.token_type,
+        _contributorsRatio: this.contributorsRatio
       }
-    );
+    )
   }
+  _writingMigrationfile() {
+    this.fs.copyTpl(
+      this.templatePath('deploy_token.sol'),
+      this.destinationPath('migrations/deploy_token.sol'), {
+        _symbol: this.token_symbol,
+      }
+    )
 
-  _writingMisc() {
-    mkdirp('app/images');
-    mkdirp('app/fonts');
+    this.fs.copyTpl(
+      this.templatePath('deploy_crowdsale.sol'),
+      this.destinationPath('migrations/deploy_crowdsale.sol'), {
+        //TODO: parameters
+        _symbol: this.token_symbol,
+        _rateVariablility: this.rateVariability,
+        _tokenRate: this.tokenRate,
+        _tokenDistribution: this.tokenDistribution,
+        _maxBuyerFundedIncluded: this.maxBuyerFundedIncluded,
+        _maxBuyerFunded: this.maxBuyerFunded,
+        _etherDistribution: this.etherDistribution,
+        _kycIncluded: this.kycIncluded
+      }
+    )
   }
-
-//   install() {
-//     const hasYarn = commandExists('yarn');
-//     this.installDependencies({
-//       npm: !hasYarn,
-//       bower: true,
-//       yarn: hasYarn,
-//       skipMessage: this.options['skip-install-message'],
-//       skipInstall: this.options['skip-install']
-//     });
-//   }
-//
-//   end() {
-//     const bowerJson = this.fs.readJSON(this.destinationPath('bower.json'));
-//     const howToInstall = `
-// After running ${chalk.yellow.bold('npm install & bower install')}, inject your
-// front end dependencies by running ${chalk.yellow.bold('gulp wiredep')}.`;
-//
-//     if (this.options['skip-install']) {
-//       this.log(howToInstall);
-//       return;
-//     }
-//
-//     // wire Bower packages to .html
-//     wiredep({
-//       bowerJson: bowerJson,
-//       directory: 'bower_components',
-//       exclude: ['bootstrap-sass', 'bootstrap.js'],
-//       ignorePath: /^(\.\.\/)*\.\./,
-//       src: 'app/index.html'
-//     });
-//
-//     if (this.includeSass) {
-//       // wire Bower packages to .scss
-//       wiredep({
-//         bowerJson: bowerJson,
-//         directory: 'bower_components',
-//         ignorePath: /^(\.\.\/)+/,
-//         src: 'app/styles/*.scss'
-//       });
-//     }
-//   }
+  _writingConfigfile() {
+    this.fs.copyTpl(
+      this.templatePath('truffle-config.js'),
+      this.destinationPath('truffle-config.js')
+    )
+  }
 }
