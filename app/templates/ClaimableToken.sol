@@ -15,7 +15,7 @@ contract ClaimableToken is Ownable {
 
       ERC20Basic token = ERC20Basic(_token);
       uint balance = token.balanceOf(this);
-      token.transfer(controller, balance);
-      ClaimedTokens(_token, controller, balance);
+      token.transfer(owner, balance);
+      ClaimedTokens(_token, owner, balance);
   }
 }

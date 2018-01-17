@@ -196,7 +196,7 @@ module.exports = class extends Generator {
     }, {
       type: 'input',
       name: 'tokenDistribution',
-      message: 'Give us your token distribution plan.\n First element must be "crowdsale" and sum of ratio must be 100\n [["crowdsale", "0x", token ratio for crowdsale]. ["name for other account to distribute token", "address of the account", token ratio for the account], ...]\n (ex) [["crowdsale","0x",80],["dev"," 0xe41a3427e6c90f9cf64f7d174a3c32c7e245f009",20]])\n',
+      message: 'Give us your token distribution plan.\n First element must be "crowdsale" and sum of ratio must be 100\n [["crowdsale", "0x", token ratio for crowdsale]. ["name for other account to distribute token", "address of the account", token ratio for the account], ...]\n (ex) [["crowdsale",80],["0xe41a3427e6c90f9cf64f7d174a3c32c7e245f009",20]])\n',
       filter: (input) => {
         return JSON.parse(input);
       },
@@ -207,9 +207,9 @@ module.exports = class extends Generator {
         if (input[0][0] != "crowdsale")
           return "First element must be 'crowdsale'"
         for (var i = 0; i < input.length; i++) {
-          if (input[i].length != 3 || typeof input[i][0] != 'string' || typeof input[i][1] != 'string' || typeof input[i][2] != 'number')
+          if (input[i].length != 2 || typeof input[i][0] != 'string' || typeof input[i][1] != 'number')
             return "invalid array"
-          sum += input[i][2];
+          sum += input[i][1];
         }
 
         if (sum != 100)
@@ -217,22 +217,6 @@ module.exports = class extends Generator {
 
         return true;
       }
-    }, {
-      type: 'confirm',
-      name: 'maxBuyerFundedIncluded',
-      value: true,
-      message: "Is there a ether limit for ico contributors?"
-    }, {
-      type: 'input',
-      name: "maxBuyerFunded",
-      message: "What is the ether limit for ico contributors?",
-      validate: (input) => {
-        var reg = /^\d+$/;
-        if (!reg.test(input))
-          return "Ether limit should be a number!";
-        return true;
-      },
-      when: answers => answers.maxBuyerFundedIncluded
     }, {
       type: 'input',
       name: 'etherDistribution',
@@ -253,12 +237,28 @@ module.exports = class extends Generator {
       }
     }, {
       type: 'confirm',
+      name: 'maxBuyerFundedIncluded',
+      value: true,
+      message: "Is there a ether limit for ico contributors?"
+    }, {
+      type: 'input',
+      name: "maxBuyerFunded",
+      message: "What is the ether limit for ico contributors?",
+      validate: (input) => {
+        var reg = /^\d+$/;
+        if (!reg.test(input))
+          return "Ether limit should be a number!";
+        return true;
+      },
+      when: answers => answers.maxBuyerFundedIncluded
+    }, {
+      type: 'confirm',
       name: 'kycIncluded',
       value: true,
       message: "Is KYC process needed for crowdsale?"
     }, {
       type: 'input',
-      name: 'owner',
+      name: 'nextTokenOwner',
       message: "Give us the owner account address for contracts.",
       validate: (input) => {
         if (input == '')
@@ -292,7 +292,9 @@ module.exports = class extends Generator {
       this.maxBuyerFunded = answers.maxBuyerFunded;
       this.etherDistribution = answers.etherDistribution;
       this.kycIncluded = answers.kycIncluded;
-      this.contributorsRatio = this.tokenDistribution[0][2];
+      this.nextTokenOwner = answers.nextTokenOwner;
+
+      this.contributorsRatio = this.tokenDistribution[0][1];
 
       if (this.tokenDistribution.length == 1)
         this.tokenDistributionIncluded = false;
@@ -300,15 +302,28 @@ module.exports = class extends Generator {
         this.tokenDistributionIncluded = true;
 
       if (this.rateVariability) {
-        var tokenRates = [];
-        var tokenRateTimelines = [];
+        this.tokenRates = [];
+        this.tokenRateTimelines = [];
         for (var i = 0; i < this.tokenRate.length; i++) {
-          tokenRateTimelines.push(this.tokenRate[0]);
-          tokenRates.push(this.tokenRate[1]);
+          this.tokenRateTimelines.push(this.tokenRate[i][0]);
+          this.tokenRates.push(this.tokenRate[i][1]);
         }
-        this.tokenRates = tokenRates;
-        this.tokenRateTimelines = tokenRateTimelines;
       }
+      this.etherDistributionWallets = [];
+      this.etherDistributionRatios = [];
+      for (i = 0; i < this.etherDistribution.length; i++) {
+          this.etherDistributionWallets.push(this.etherDistribution[i][0]);
+          this.etherDistributionRatios.push(this.etherDistribution[i][1]);
+      }
+      if (this.tokenDistributionIncluded) {
+        this.tokenDistributionWallets = [];
+        this.tokenDistributionRatios = [];
+        for (i = 1; i < this.tokenDistribution.length; i++) {
+            this.tokenDistributionWallets.push(this.tokenDistribution[i][0]);
+            this.tokenDistributionRatios.push(this.tokenDistribution[i][1]);
+        }
+      }
+
     });
   }
 
@@ -317,7 +332,7 @@ module.exports = class extends Generator {
     this._writingBaseContractfile();
     this._writingTokenContractfile();
     this._writingCrowdsaleContractfile();
-    // this._writingMigrationfile();
+    this._writingMigrationfile();
     this._writingConfigfile();
   }
 
@@ -341,7 +356,7 @@ module.exports = class extends Generator {
 
       this.fs.copyTpl(
         this.templatePath('Zeppelin_token.sol'),
-        this.destinationPath('contracts/Token.sol'), {
+        this.destinationPath('contracts/'.concat(this.token_symbol).concat('Token.sol')), {
           _name: this.token_name,
           _symbol: this.token_symbol,
           _decimals: this.token_decimal,
@@ -354,7 +369,7 @@ module.exports = class extends Generator {
     if (this.token_type == 'minime') {
       this.fs.copyTpl(
         this.templatePath('Minime_token.sol'),
-        this.destinationPath('contracts/Token.sol'), {
+        this.destinationPath('contracts/'.concat(this.token_symbol).concat('Token.sol')), {
           _name: this.token_name,
           _symbol: this.token_symbol,
           _decimals: this.token_decimal
@@ -384,7 +399,7 @@ module.exports = class extends Generator {
 
     this.fs.copyTpl(
       this.templatePath('Crowdsale.sol'),
-      this.destinationPath('contracts/Crowdsale.sol'), {
+      this.destinationPath('contracts/'.concat(this.token_symbol).concat('Crowdsale.sol')), {
         _symbol: this.token_symbol,
         _rateVariablility: this.rateVariability,
         _maxBuyerFundedIncluded: this.maxBuyerFundedIncluded,
@@ -395,27 +410,47 @@ module.exports = class extends Generator {
         _contributorsRatio: this.contributorsRatio
       }
     )
+    this.fs.copy(
+      this.templatePath('KYC.sol'),
+      this.destinationPath('contracts/KYC.sol')
+    )
+
+    this.fs.copy(
+      this.templatePath('MultiAccountRefundVault.sol'),
+      this.destinationPath('contracts/MultiAccountRefundVault.sol')
+    )
   }
   _writingMigrationfile() {
     this.fs.copyTpl(
-      this.templatePath('deploy_token.sol'),
-      this.destinationPath('migrations/deploy_token.sol'), {
+      this.templatePath('1_deploy_token.js'),
+      this.destinationPath('migrations/1_deploy_token.js'), {
         _symbol: this.token_symbol,
       }
     )
 
     this.fs.copyTpl(
-      this.templatePath('deploy_crowdsale.sol'),
-      this.destinationPath('migrations/deploy_crowdsale.sol'), {
+      this.templatePath('2_deploy_crowdsale.js'),
+      this.destinationPath('migrations/2_deploy_crowdsale.js'), {
         //TODO: parameters
         _symbol: this.token_symbol,
-        _rateVariablility: this.rateVariability,
-        _tokenRate: this.tokenRate,
-        _tokenDistribution: this.tokenDistribution,
+        _tokenType: this.token_type,
+        _kycIncluded: this.kycIncluded,
+        _tokenDistributionIncluded: this.tokenDistributionIncluded,
+        _etherDistributionWallets: this.etherDistributionWallets,
+        _etherDistributionRatios: this.etherDistributionRatios,
+        _tokenDistributionWallets: this.tokenDistributionWallets,
+        _tokenDistributionRatios: this.tokenDistributionRatios,
+        _startTime: this.startTime,
+        _endTime: this.endTime,
+        _maxEtherCap: this.maxEtherCap,
+        _minEtherCap: this.minEtherCap,
         _maxBuyerFundedIncluded: this.maxBuyerFundedIncluded,
         _maxBuyerFunded: this.maxBuyerFunded,
-        _etherDistribution: this.etherDistribution,
-        _kycIncluded: this.kycIncluded
+        _nextTokenOwner: this.nextTokenOwner,
+        _rateVariablility: this.rateVariability,
+        _tokenRates: this.tokenRates,
+        _tokenRateTimelines: this.tokenRateTimelines,
+        _tokenRate: this.tokenRate
       }
     )
   }

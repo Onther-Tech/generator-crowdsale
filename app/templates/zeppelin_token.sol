@@ -13,9 +13,9 @@ contract <%=_symbol %>Token <%inherit()%> {
 
 <% function import_contracts() {%>
 import './zeppelin/token/StandardToken.sol';
-import './zeppelin/MintableToken.sol';
+import './zeppelin/token/MintableToken.sol';
 import './ClaimableToken.sol';
-<%if(includeBurnable) {%>import './zeppelin/BurnableToken.sol';<%}%>
-<%if(includePausable) {%>import './zeppelin/PausableToken.sol';<%}%>
-<%if(includeVesting) {%>import './zeppelin/TokenVesting.sol';<%}%>
+<%if(includeBurnable) {%>import './zeppelin/token/BurnableToken.sol';<%}%>
+<%if(includePausable) {%>import './zeppelin/token/PausableToken.sol';<%}%>
+<%if(includeVesting) {%>import './zeppelin/token/TokenVesting.sol';<%}%>
 <%}%>

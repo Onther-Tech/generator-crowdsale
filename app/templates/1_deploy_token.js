@@ -5,7 +5,7 @@ module.exports = async function (deployer, network, accounts) {
   accounts.map(logAccount);
 
   try {
-    deployer.deploy(<%=_symbol%>Token)
+    deployer.deploy(<%= _symbol %>Token)
   } catch (e) {
     console.log(e)
   }

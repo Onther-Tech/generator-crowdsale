@@ -2,22 +2,31 @@ pragma solidity ^0.4.18;
 
 <%import_contracts()%>
 
-//TODO: maxBuyerFunded
 contract <%= _symbol %>Crowdsale <%inherit()%> {
 
   using SafeMath for uint256;
 
-  address vault;
-  address token;
+  MultiAccountRefundVault public vault;
+  <%= _symbol %>Token public token;
+  <% if(_maxBuyerFundedIncluded) {%>uint public maxBuyerFunded = <%= _maxBuyerFunded %> ether;<% } %>
   <% if(_tokenDistributionIncluded) { %>address[] public tokenDistributionWallets;
   uint[] public tokenDistributionRatios;<% } %>
-  <% if(_kycIncluded) {%>address public kyc;<% } %>
+  <% if(_kycIncluded) {%>KYC public kyc;<% } %>
 
   uint public maxEtherCap;
   uint public minEtherCap;
   mapping (address => uint) public beneficiaryFunded;
-  uint finalizedTime;
-  address nextTokenOwner;
+  address public nextTokenOwner;
+  <% if(_tokenDistributionIncluded) {%>uint public contributorsRatio = <%= _contributorsRatio %>;<% } %>
+  uint public startTime;
+  uint public endTime;
+  bool public isFinalized;
+  uint public finalizedTime;
+  uint public weiRaised;
+
+  event ClaimedTokens(address indexed claimToken, address owner, uint balance);
+  event Finalized();
+  event CrowdSaleTokenPurchase(address indexed buyer, address indexed beneficiary, uint indexed toFund, uint tokens);
 
   function <%= _symbol %>Crowdsale (
     <% if(_kycIncluded) {%>address _kyc,
@@ -29,7 +38,8 @@ contract <%= _symbol %>Crowdsale <%inherit()%> {
     uint _endTime,
     uint _maxEtherCap,
     uint _minEtherCap,
-    address _nextTokenOwner,
+    <% if(_maxBuyerFundedIncluded) {%>uint _maxBuyerFunded,
+    <% } %>address _nextTokenOwner,
     <% if(_rateVariablility) {%>uint[] _tokenRates,
     uint[] _tokenRateTimelines<% } else { %>uint _tokenRate<% } %>
     ) Rate(
@@ -37,15 +47,16 @@ contract <%= _symbol %>Crowdsale <%inherit()%> {
       _tokenRateTimelines<% } else { %>_tokenRate<% } %>
       )
     {
-      <% if(_kycIncluded) {%>kyc = _kyc;<% } %>
-      vault = _vault;
-      token = _token;
+      <% if(_kycIncluded) {%>kyc = KYC(_kyc);<% } %>
+      vault = MultiAccountRefundVault(_vault);
+      token = <%= _symbol %>Token(_token);
       <% if(_tokenDistributionIncluded) {%>tokenDistributionWallets = _tokenDistributionWallets;
       tokenDistributionRatios = _tokenDistributionRatios;<% } %>
       startTime = _startTime;
       endTime = _endTime;
       maxEtherCap = _maxEtherCap;
       minEtherCap = _minEtherCap;
+      <% if(_maxBuyerFundedIncluded) {%>maxBuyerFunded = _maxBuyerFunded;<% } %>
       nextTokenOwner = _nextTokenOwner;
 
     }
@@ -73,10 +84,15 @@ contract <%= _symbol %>Crowdsale <%inherit()%> {
     } else {
       toFund = weiAmount;
     }
+    <% if(_maxBuyerFundedIncluded)
+    {%>if (toFund.add(beneficiaryFunded[beneficiary]) > maxBuyerFunded) {
+      toFund = maxBuyerFunded.sub(beneficiaryFunded[beneficiary]);
+    }<% } %>
 
+    require(toFund > 0);
     uint rate = getRate();
-    uint tokens = mul(toFund, rate);
-    uint toReturn = sub(weiAmount, toFund);
+    uint tokens = toFund.mul(rate);
+    uint toReturn = weiAmount.sub(toFund);
 
     weiRaised = weiRaised.add(toFund);
     beneficiaryFunded[beneficiary] = beneficiaryFunded[beneficiary].add(toFund);
@@ -155,8 +171,9 @@ contract <%= _symbol %>Crowdsale <%inherit()%> {
 
     uint contributorsToken = token.totalSupply();
     uint distributionAmount;
-    for (uint i = 0; i < tokenDistributionWallets; i++) {
-      distributionAmount = contributorsToken.mul(tokenDistributionRatios[i]).div(<%= _contributorsRatio %>)
+
+    for (uint i = 0; i < tokenDistributionWallets.length; i++) {
+      distributionAmount = contributorsToken.mul(tokenDistributionRatios[i]).div(contributorsRatio);
       <% if (_tokenType == 'zeppelin') { %>
       token.mint(tokenDistributionWallets[i], distributionAmount);
       <% } else {%>
@@ -166,11 +183,11 @@ contract <%= _symbol %>Crowdsale <%inherit()%> {
   }
   <% } %>
 
-  function claimRefund(address investor) returns (bool) {
+  function claimRefund(address investor) public {
     require(isFinalized);
     require(!minReached());
 
-    return vault.refund(investor);
+    vault.refund(investor);
   }
 
 
@@ -189,7 +206,7 @@ contract <%= _symbol %>Crowdsale <%inherit()%> {
         return;
     }
     ERC20Basic claimToken = ERC20Basic(_claimToken);
-    uint256 balance = claimToken.balanceOf(this);
+    uint balance = claimToken.balanceOf(this);
     claimToken.transfer(owner, balance);
 
     ClaimedTokens(_claimToken, owner, balance);
@@ -197,7 +214,7 @@ contract <%= _symbol %>Crowdsale <%inherit()%> {
 }
 
 
-<%function inherit() {%>is Ownable, SafeMath, Pausable, Rate, ERC20Basic<%}%>
+<%function inherit() {%>is Rate, Ownable, Pausable<%}%>
 
 <% function import_contracts() {%>
 import './zeppelin/ownership/Ownable.sol';
@@ -205,4 +222,7 @@ import './zeppelin/math/SafeMath.sol';
 import './zeppelin/lifecycle/Pausable.sol';
 import './Rate.sol';
 import './zeppelin/token/ERC20Basic.sol';
+import './MultiAccountRefundVault.sol';
+import './<%= _symbol %>Token.sol';<% if (_kycIncluded) { %>
+import './KYC.sol';<% } %>
 <%}%>
