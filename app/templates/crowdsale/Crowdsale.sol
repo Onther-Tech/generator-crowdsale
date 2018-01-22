@@ -42,9 +42,10 @@ contract <%= _symbol %>Crowdsale <%inherit()%> {
     <% } %>address _nextTokenOwner,
     <% if(_rateVariablility) {%>uint[] _tokenRates,
     uint[] _tokenRateTimelines<% } else { %>uint _tokenRate<% } %>
-    ) Rate(
-      <% if(_rateVariablility) {%>_tokenRates,
-      _tokenRateTimelines<% } else { %>_tokenRate<% } %>
+    ) <% if(_rateVariablility) {%>VariableRate (
+      _tokenRates,
+      _tokenRateTimelines<% } else { %>StaticRate (
+      _tokenRate<% } %>
       )
     {
       <% if(_kycIncluded) {%>kyc = KYC(_kyc);<% } %>
@@ -214,13 +215,13 @@ contract <%= _symbol %>Crowdsale <%inherit()%> {
 }
 
 
-<%function inherit() {%>is Rate, Ownable, Pausable<%}%>
+<%function inherit() {%>is Ownable, Pausable<% if(_rateVariablility) {%>, VariableRate<% } else { %>, StaticRate<% } %><% } %>
 
 <% function import_contracts() {%>
 import './zeppelin/ownership/Ownable.sol';
 import './zeppelin/math/SafeMath.sol';
-import './zeppelin/lifecycle/Pausable.sol';
-import './Rate.sol';
+import './zeppelin/lifecycle/Pausable.sol';<% if(_rateVariablility) {%>
+import './VariableRate.sol';<% } else { %>import './StaticRate.sol';<% } %>
 import './zeppelin/token/ERC20Basic.sol';
 import './MultiAccountRefundVault.sol';
 import './<%= _symbol %>Token.sol';<% if (_kycIncluded) { %>

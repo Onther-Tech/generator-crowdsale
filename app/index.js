@@ -342,8 +342,8 @@ module.exports = class extends Generator {
   }
 
   _writingBaseContractfile() {
-    ncp(this.templatePath('zeppelin'), this.destinationPath('contracts/zeppelin'));
-    ncp(this.templatePath('minime'), this.destinationPath('contracts/minime'));
+    ncp(this.templatePath('lib/zeppelin'), this.destinationPath('contracts/zeppelin'));
+    ncp(this.templatePath('lib/minime'), this.destinationPath('contracts/minime'));
   }
 
   _writingTokenContractfile() {
@@ -422,14 +422,14 @@ module.exports = class extends Generator {
   }
   _writingMigrationfile() {
     this.fs.copyTpl(
-      this.templatePath('1_deploy_token.js'),
+      this.templatePath('migrations/1_deploy_token.js'),
       this.destinationPath('migrations/1_deploy_token.js'), {
         _symbol: this.token_symbol,
       }
     )
 
     this.fs.copyTpl(
-      this.templatePath('2_deploy_crowdsale.js'),
+      this.templatePath('migrations/2_deploy_crowdsale.js'),
       this.destinationPath('migrations/2_deploy_crowdsale.js'), {
         //TODO: parameters
         _symbol: this.token_symbol,
