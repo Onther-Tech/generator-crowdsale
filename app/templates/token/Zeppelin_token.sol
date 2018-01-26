@@ -2,10 +2,10 @@ pragma solidity ^0.4.18;
 
 <%import_contracts()%>
 
-contract <%=_symbol %>Token <%inherit()%> {
-  string public name = "<%= _name %>";
-  string public symbol = "<%= _symbol %>";
-  uint8 public decimals = <%= _decimals %>;
+contract <%=token_symbol %>Token <%inherit()%> {
+  string public name = "<%= token_name %>";
+  string public symbol = "<%= token_symbol %>";
+  uint8 public decimals = <%= decimal %>;
 }
 
 <% function inherit() {%>is StandardToken, MintableToken, ClaimableToken<%if(includeBurnable){%>, BurnableToken<%}%><%if(includePausable){%>, PausableToken<%}%><%if(includeVesting){%>, TokenVesting<%}%>

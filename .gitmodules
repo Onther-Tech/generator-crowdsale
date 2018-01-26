@@ -1,0 +1,3 @@
+[submodule "app/templates/tokyo-reusable-crowdsale"]
+	path = app/templates/tokyo-reusable-crowdsale
+	url = https://github.com/Onther-Tech/tokyo-reusable-crowdsale
